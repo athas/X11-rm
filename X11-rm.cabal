@@ -1,5 +1,5 @@
 name:           X11-rm
-version:        0.1.0
+version:        0.1
 license:                BSD3
 license-file:   LICENSE
 maintainer:     Troels Henriksen <athas@sigkill.dk>
