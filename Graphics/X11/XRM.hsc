@@ -6,6 +6,7 @@ module Graphics.X11.XRM
          -- * Resource manager
          RMDatabase,
          RMValue(..),
+         resourceManagerString,
          rmGetFileDatabase,
          rmPutFileDatabase,
          rmGetStringDatabase,
@@ -24,7 +25,7 @@ module Graphics.X11.XRM
          rmValue,
        ) where
        
-import Graphics.X11.Xlib
+import Graphics.X11.Xlib hiding (resourceManagerString)
 
 import Data.Data
 import Foreign
@@ -55,6 +56,16 @@ instance Storable RMValue where
               addr <- #{peek XrmValue,addr} p
               return (RMValue size addr)
 
+-- | interface to the X11 library function @XResourceManagerString()@.
+-- The one in the X11 library ('Graphics.X11.Xlib.Display') is unsafe,
+-- this one is safe.
+resourceManagerString   :: Display -> IO (Maybe String)
+resourceManagerString display = do s <- xResourceManagerString display
+                                   if s == nullPtr then return Nothing
+                                                   else Just `fmap` peekCString s
+foreign import ccall unsafe "HsXlib.h XResourceManagerString"
+        xResourceManagerString  :: Display -> IO CString
+
 -- | interface to the X11 library function @XrmGetFileDatabase()@.
 rmGetFileDatabase :: String -> IO (Maybe RMDatabase)
 rmGetFileDatabase file = withCString file $ \ c_file -> do
@@ -73,9 +84,11 @@ foreign import ccall unsafe "HsXlib.h XrmPutFileDatabase"
         xrmPutFileDatabase :: RMDatabase -> CString -> IO ()
 
 -- | interface to the X11 library function @XrmGetStringDatabase()@.
-rmGetStringDatabase :: String -> IO RMDatabase
-rmGetStringDatabase s = withCString s $ \ c_s ->
-                        xrmGetStringDatabase c_s
+rmGetStringDatabase :: String -> IO (Maybe RMDatabase)
+rmGetStringDatabase s = withCString s $ \ c_s -> do
+                          RMDatabase db <- xrmGetStringDatabase c_s
+                          return $ if db == nullPtr then Nothing
+                                   else Just (RMDatabase db)
 foreign import ccall unsafe "HsXlib.h XrmGetStringDatabase"
         xrmGetStringDatabase :: CString -> IO RMDatabase
 
